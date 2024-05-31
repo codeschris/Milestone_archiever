@@ -1,0 +1,3 @@
+# Milestone Achiever
+
+The Milestone Achiever project aims to provide a decentralized platform on the SUI blockchain for creating, funding, and tracking milestones. Users can define specific goals, contribute funds, and manage progress transparently and securely. The platform ensures only authorized contributions and withdrawals, maintaining milestone integrity and ownership. By leveraging SUI's smart contract capabilities, the project automates the entire lifecycle of milestones, enhancing accountability and collaboration in achieving predefined objectives. This innovation fosters trust and efficiency in collective goal management.
