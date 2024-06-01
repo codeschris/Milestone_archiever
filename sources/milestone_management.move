@@ -1,21 +1,19 @@
-module milestone_management::milestone_management{
+module milestone_management::milestone_management {
 
     use sui::event::{Self};
-    use std::string::{Self,String};
+    use std::string::{Self, String};
     use sui::coin::{Self, Coin};
     use sui::balance::{Balance};
     use sui::sui::SUI;
 
-
-   /* Error Constants */
+    /* Error Constants */
     const EWrongOwner: u64 = 0;
     const EAbsurdAmount: u64 = 1;
     const EInvalidContributionAmount: u64 = 2;
     const EMilestoneAlreadyCompleted: u64 = 3;
     const EInvalidCancellationRequest: u64 = 5;
 
-
-     /* Structs */
+    /* Structs */
     // Admin capability struct
     public struct AdminCap has key {
         id: UID
@@ -47,20 +45,18 @@ module milestone_management::milestone_management{
         status: String,
     }
 
-      /* Functions */
+    /* Functions */
     fun init(ctx: &mut TxContext) {
         transfer::transfer(AdminCap { id: object::new(ctx) }, tx_context::sender(ctx));
     }
 
-
-    // Function where  admin is one who  can create milestones
+    // Function where admin can create milestones
     public entry fun create_milestone(
         _: &AdminCap,
         description: vector<u8>,
         target_amount: u64,
         ctx: &mut TxContext,
     ) {
-
         let milestone = Milestone {
             id: object::new(ctx),
             description: string::utf8(description),
@@ -72,10 +68,8 @@ module milestone_management::milestone_management{
         transfer::share_object(milestone);
     }
 
-
-
-    // action to contribute to a milestone
-    public entry fun contribute (
+    // Action to contribute to a milestone
+    public entry fun contribute(
         milestone: &mut Milestone,
         amount: u64,
         collateral: Coin<SUI>,
@@ -85,7 +79,6 @@ module milestone_management::milestone_management{
         assert!(milestone.status == string::utf8(b"Open"), EMilestoneAlreadyCompleted);
 
         let id_ = object::new(ctx);
-        let _inner_ = object::uid_to_inner(&id_);
         let contribution = Contribution {
             id: id_,
             milestone_id: object::uid_to_inner(&milestone.id),
@@ -93,12 +86,12 @@ module milestone_management::milestone_management{
             balance: coin::into_balance(collateral),
             contributor: tx_context::sender(ctx),
         };
-        milestone.collected_amount = milestone.collected_amount + amount;
+        milestone.collected_amount += amount;
 
         // Check if the milestone is fully funded
         if (milestone.collected_amount >= milestone.target_amount) {
             milestone.status = string::utf8(b"Completed");
-        };
+        }
 
         // Emit event
         let milestone_updated = MilestoneUpdated {
@@ -110,12 +103,11 @@ module milestone_management::milestone_management{
 
         transfer::share_object(contribution);
     }
-  
 
-    // action to cancel a contribution
+    // Action to cancel a contribution
     public entry fun cancel_contribution(
         milestone: &mut Milestone,
-        contribution:Contribution,
+        contribution: Contribution,
         ctx: &mut TxContext,
     ) {
         let Contribution {
@@ -128,14 +120,13 @@ module milestone_management::milestone_management{
         assert!(contributor == tx_context::sender(ctx), EWrongOwner);
         assert!(object::uid_to_inner(&milestone.id) == milestone_id, EInvalidCancellationRequest);
         assert!(milestone.status != string::utf8(b"Completed"), EMilestoneAlreadyCompleted);
-        
 
         // Update milestone collected amount
-        milestone.collected_amount = milestone.collected_amount - amount;
+        milestone.collected_amount -= amount;
 
-        if (milestone.status == string::utf8(b"Completed") ){
+        if (milestone.status == string::utf8(b"Completed")) {
             milestone.status = string::utf8(b"Open");
-        };
+        }
 
         // Emit event
         let milestone_updated = MilestoneUpdated {
@@ -158,7 +149,7 @@ module milestone_management::milestone_management{
         (milestone.collected_amount, milestone.status)
     }
 
-    // get balance of a contribution
+    // Get balance of a contribution
     public fun get_contribution_balance(
         contribution: &Contribution,
     ) : &Balance<SUI> {
@@ -176,9 +167,9 @@ module milestone_management::milestone_management{
         assert!(milestone.status == string::utf8(b"Completed"), EMilestoneAlreadyCompleted);
         assert!(milestone.collected_amount >= amount, EInvalidContributionAmount);
 
-        // Check for amount to withdraw not to exceed target amount of milestone
+        // Check that amount to withdraw does not exceed target amount of milestone
         assert!(milestone.target_amount >= amount, EAbsurdAmount);
-        milestone.collected_amount = milestone.collected_amount - amount;
+        milestone.collected_amount -= amount;
 
         // Emit event
         let milestone_updated = MilestoneUpdated {
@@ -188,9 +179,7 @@ module milestone_management::milestone_management{
         };
         event::emit<MilestoneUpdated>(milestone_updated);
 
-        let withdraw_amount = coin::take(&mut contribution.balance,amount, ctx);
+        let withdraw_amount = coin::take(&mut contribution.balance, amount, ctx);
         transfer::public_transfer(withdraw_amount, tx_context::sender(ctx));
     }
-
-  
 }
