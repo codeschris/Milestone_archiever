@@ -76,72 +76,43 @@ module milestone_management::milestone_management{
         milestone
     }
 
-    // // action to cancel a contribution
-    // public entry fun cancel_contribution(
-    //     milestone: &mut Milestone,
-    //     contribution: Contribution,
-    //     ctx: &mut TxContext,
-    // ) {
-    //     let Contribution {
-    //         id,
-    //         milestone_id,
-    //         amount,
-    //         balance,
-    //         contributor,
-    //     } = contribution;
-    //     assert!(object::uid_to_inner(&milestone.id) == milestone_id, EInvalidCancellationRequest);
-    //     assert!(milestone.status, EMilestoneAlreadyCompleted);
-    //     // Update milestone collected amount
-    //     milestone.collected_amount = milestone.collected_amount - amount;
-    //     // Emit event
-    //     let milestone_updated = MilestoneUpdated {
-    //         milestone_id: object::uid_to_inner(&milestone.id),
-    //         new_amount: milestone.collected_amount,
-    //     };
-    //     event::emit<MilestoneUpdated>(milestone_updated);
+    public fun close_contribute(_: &AdminCap, self: &mut Contribution) {
+        self.status = false;
+    } 
 
-    //     object::delete(id);
+    // action to cancel a contribution
+    public fun cancel_contribution(
+        self: &mut Contribution,
+        milestone: Milestone,
+        ctx: &mut TxContext,
+    ) : Coin<SUI> {
+        let Milestone {
+            id,
+            to: to,
+            amount: amount_,
+        } = milestone;
+        assert!(object::uid_to_inner(&self.id) == to, EInvalidCancellationRequest);
+        assert!(self.status, EMilestoneAlreadyCompleted);
+        // Update milestone collected amount
+        self.amount = self.amount - amount_;
+        
+        object::delete(id);
 
-    //     let coin_ = coin::from_balance(balance, ctx);
-    //     transfer::public_transfer(coin_, tx_context::sender(ctx));
-    // }
+        let coin = coin::take(&mut self.balance, amount_, ctx);
+        coin
+    }
 
-    // // Function to retrieve milestone status and collected amount
-    // public fun get_milestone_status(
-    //     milestone: &Milestone,
-    // ): (u64) {
-    //     (milestone.collected_amount)
-    // }
+    // Withdraw amount for a milestone in contribution
+    public fun withdraw_amount(
+        _: &AdminCap,
+        self: &mut Contribution,
+        amount: u64,
+        ctx: &mut TxContext,
+    ) : Coin<SUI> {
+        assert!(!self.status, EMilestoneAlreadyCompleted);
+        self.amount = self.amount - amount;
 
-    // // get balance of a contribution
-    // public fun get_contribution_balance(
-    //     contribution: &Contribution,
-    // ) : &Balance<SUI> {
-    //     &contribution.balance
-    // }
-
-    // // Withdraw amount for a milestone in contribution
-    // public entry fun withdraw_amount(
-    //     milestone: &mut Milestone,
-    //     contribution: &mut Contribution,
-    //     amount: u64,
-    //     ctx: &mut TxContext,
-    // ) {
-    //     assert!(object::id(milestone) == contribution.milestone_id, EInvalidContributionAmount);
-    //     assert!(!milestone.status, EMilestoneAlreadyCompleted);
-    //     assert!(milestone.collected_amount >= amount, EInvalidContributionAmount);
-    //     // Check for amount to withdraw not to exceed target amount of milestone
-    //     assert!(milestone.target_amount >= amount, EAbsurdAmount);
-    //     milestone.collected_amount = milestone.collected_amount - amount;
-
-    //     // Emit event
-    //     let milestone_updated = MilestoneUpdated {
-    //         milestone_id: object::uid_to_inner(&milestone.id),
-    //         new_amount: milestone.collected_amount,
-    //     };
-    //     event::emit<MilestoneUpdated>(milestone_updated);
-
-    //     let withdraw_amount = coin::take(&mut contribution.balance,amount, ctx);
-    //     transfer::public_transfer(withdraw_amount, tx_context::sender(ctx));
-    // }
+        let coin_ = coin::take(&mut self.balance, amount, ctx);
+        coin_
+    }
 }
