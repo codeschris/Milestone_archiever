@@ -139,7 +139,6 @@ module milestone_management::milestone_management{
 
     // Withdraw amount for a milestone in contribution
     public entry fun withdraw_amount(
-        _: &AdminCap,
         milestone: &mut Milestone,
         contribution: &mut Contribution,
         amount: u64,
