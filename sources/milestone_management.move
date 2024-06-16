@@ -6,7 +6,6 @@ module milestone_management::milestone_management{
     use sui::balance::{Balance};
     use sui::sui::SUI;
 
-
    /* Error Constants */
     const EWrongOwner: u64 = 0;
     const EAbsurdAmount: u64 = 1;
@@ -51,19 +50,17 @@ module milestone_management::milestone_management{
     fun init(ctx: &mut TxContext) {
         transfer::transfer(AdminCap { id: object::new(ctx) }, tx_context::sender(ctx));
     }
-
-
     // Function where  admin is one who  can create milestones
     public entry fun create_milestone(
         _: &AdminCap,
-        description: vector<u8>,
+        description: String,
         target_amount: u64,
         ctx: &mut TxContext,
     ) {
 
         let milestone = Milestone {
             id: object::new(ctx),
-            description: string::utf8(description),
+            description: description,
             target_amount,
             collected_amount: 0,
             status: string::utf8(b"Open"),
@@ -71,8 +68,6 @@ module milestone_management::milestone_management{
         };
         transfer::share_object(milestone);
     }
-
-
 
     // action to contribute to a milestone
     public entry fun contribute (
@@ -110,7 +105,6 @@ module milestone_management::milestone_management{
 
         transfer::share_object(contribution);
     }
-  
 
     // action to cancel a contribution
     public entry fun cancel_contribution(
@@ -191,6 +185,4 @@ module milestone_management::milestone_management{
         let withdraw_amount = coin::take(&mut contribution.balance,amount, ctx);
         transfer::public_transfer(withdraw_amount, tx_context::sender(ctx));
     }
-
-  
 }
