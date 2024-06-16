@@ -75,7 +75,7 @@ module milestone_management::milestone_management{
         amount: u64,
         collateral: Coin<SUI>,
         ctx: &mut TxContext,
-    ) {
+    ) : contribute {
         assert!(amount > 0, EInvalidContributionAmount);
         assert!(milestone.status == string::utf8(b"Open"), EMilestoneAlreadyCompleted);
 
@@ -102,8 +102,7 @@ module milestone_management::milestone_management{
             status: milestone.status,
         };
         event::emit<MilestoneUpdated>(milestone_updated);
-
-        transfer::share_object(contribution);
+        contribute
     }
 
     // action to cancel a contribution
