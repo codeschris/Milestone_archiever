@@ -2,7 +2,7 @@ module milestone_management::milestone_management{
 
     use sui::event::{Self};
     use std::string::{Self,String};
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Coin};
     use sui::balance::{Balance};
     use sui::sui::SUI;
 
@@ -26,7 +26,7 @@ module milestone_management::milestone_management{
         description: String,
         target_amount: u64,
         collected_amount: u64,
-        status: String,
+        status: bool,
         owner: address,
     }
 
@@ -43,7 +43,6 @@ module milestone_management::milestone_management{
     public struct MilestoneUpdated has copy, drop {
         milestone_id: ID,
         new_amount: u64,
-        status: String,
     }
 
       /* Functions */
@@ -63,21 +62,20 @@ module milestone_management::milestone_management{
             description: description,
             target_amount,
             collected_amount: 0,
-            status: string::utf8(b"Open"),
+            status: true,
             owner: tx_context::sender(ctx),
         };
         transfer::share_object(milestone);
     }
 
     // action to contribute to a milestone
-    public entry fun contribute (
+    public fun contribute (
         milestone: &mut Milestone,
-        amount: u64,
         collateral: Coin<SUI>,
         ctx: &mut TxContext,
-    ) : contribute {
-        assert!(amount > 0, EInvalidContributionAmount);
-        assert!(milestone.status == string::utf8(b"Open"), EMilestoneAlreadyCompleted);
+    ) : Contribution {
+        assert!(milestone.status, EMilestoneAlreadyCompleted);
+        let amount = coin::value(&collateral);
 
         let id_ = object::new(ctx);
         let _inner_ = object::uid_to_inner(&id_);
@@ -92,17 +90,16 @@ module milestone_management::milestone_management{
 
         // Check if the milestone is fully funded
         if (milestone.collected_amount >= milestone.target_amount) {
-            milestone.status = string::utf8(b"Completed");
+            milestone.status = false;
         };
 
         // Emit event
         let milestone_updated = MilestoneUpdated {
             milestone_id: object::uid_to_inner(&milestone.id),
             new_amount: milestone.collected_amount,
-            status: milestone.status,
         };
         event::emit<MilestoneUpdated>(milestone_updated);
-        contribute
+        contribution
     }
 
     // action to cancel a contribution
@@ -120,21 +117,20 @@ module milestone_management::milestone_management{
         } = contribution;
         assert!(contributor == tx_context::sender(ctx), EWrongOwner);
         assert!(object::uid_to_inner(&milestone.id) == milestone_id, EInvalidCancellationRequest);
-        assert!(milestone.status != string::utf8(b"Completed"), EMilestoneAlreadyCompleted);
+        assert!(milestone.status, EMilestoneAlreadyCompleted);
         
 
         // Update milestone collected amount
         milestone.collected_amount = milestone.collected_amount - amount;
 
-        if (milestone.status == string::utf8(b"Completed") ){
-            milestone.status = string::utf8(b"Open");
+        if (milestone.status == false){
+            milestone.status = true;
         };
 
         // Emit event
         let milestone_updated = MilestoneUpdated {
             milestone_id: object::uid_to_inner(&milestone.id),
             new_amount: milestone.collected_amount,
-            status: milestone.status,
         };
         event::emit<MilestoneUpdated>(milestone_updated);
 
@@ -147,8 +143,8 @@ module milestone_management::milestone_management{
     // Function to retrieve milestone status and collected amount
     public fun get_milestone_status(
         milestone: &Milestone,
-    ): (u64, String) {
-        (milestone.collected_amount, milestone.status)
+    ): (u64) {
+        (milestone.collected_amount)
     }
 
     // get balance of a contribution
@@ -166,7 +162,7 @@ module milestone_management::milestone_management{
         ctx: &mut TxContext,
     ) {
         assert!(tx_context::sender(ctx) == milestone.owner, EWrongOwner);
-        assert!(milestone.status == string::utf8(b"Completed"), EMilestoneAlreadyCompleted);
+        assert!(!milestone.status, EMilestoneAlreadyCompleted);
         assert!(milestone.collected_amount >= amount, EInvalidContributionAmount);
 
         // Check for amount to withdraw not to exceed target amount of milestone
@@ -177,7 +173,6 @@ module milestone_management::milestone_management{
         let milestone_updated = MilestoneUpdated {
             milestone_id: object::uid_to_inner(&milestone.id),
             new_amount: milestone.collected_amount,
-            status: milestone.status,
         };
         event::emit<MilestoneUpdated>(milestone_updated);
 
